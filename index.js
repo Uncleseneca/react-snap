@@ -692,7 +692,7 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
 
   const server = options.externalServer ? null : startServer(options);
 
-  const basePath = `http://localhost:${options.port}`;
+  const basePath = `http://localhost:${options.port}/${options.htmlName}`;
   const publicPath = options.publicPath;
   const ajaxCache = {};
   const { http2PushManifest } = options;
