@@ -1,37 +1,37 @@
-const crawl = require("./src/puppeteer_utils.js").crawl;
-const http = require("http");
-const express = require("express");
-const serveStatic = require("serve-static");
-const fallback = require("express-history-api-fallback");
-const path = require("path");
-const nativeFs = require("fs");
-const mkdirp = require("mkdirp");
-const minify = require("html-minifier").minify;
-const url = require("url");
-const minimalcss = require("minimalcss");
-const CleanCSS = require("clean-css");
+const crawl = require('./src/puppeteer_utils.js').crawl;
+const http = require('http');
+const express = require('express');
+const serveStatic = require('serve-static');
+const fallback = require('express-history-api-fallback');
+const path = require('path');
+const nativeFs = require('fs');
+const mkdirp = require('mkdirp');
+const minify = require('html-minifier').minify;
+const url = require('url');
+const minimalcss = require('minimalcss');
+const CleanCSS = require('clean-css');
 const twentyKb = 20 * 1024;
 
 const defaultOptions = {
   // added options
-  htmlName: "index.html",
+  htmlName: 'index.html',
   //# stable configurations
   port: 45678,
-  source: "build",
+  source: 'build',
   destination: null,
   concurrency: 4,
-  include: ["/"],
-  userAgent: "ReactSnap",
+  include: ['/'],
+  userAgent: 'ReactSnap',
   // 4 params below will be refactored to one: `puppeteer: {}`
   // https://github.com/stereobooster/react-snap/issues/120
   headless: true,
   puppeteer: {
-    cache: true
+    cache: true,
   },
   puppeteerArgs: [],
   puppeteerExecutablePath: undefined,
   puppeteerIgnoreHTTPSErrors: false,
-  publicPath: "/",
+  publicPath: '/',
   minifyCss: {},
   minifyHtml: {
     collapseBooleanAttributes: true,
@@ -39,17 +39,17 @@ const defaultOptions = {
     decodeEntities: true,
     keepClosingSlash: true,
     sortAttributes: true,
-    sortClassName: false
+    sortClassName: false,
   },
   // mobile first approach
   viewport: {
     width: 480,
-    height: 850
+    height: 850,
   },
   sourceMaps: true,
   //# workarounds
   // using CRA1 for compatibility with previous version will be changed to false in v2
-  fixWebpackChunksIssue: "CRA1",
+  fixWebpackChunksIssue: 'CRA1',
   removeBlobs: true,
   fixInsertRule: true,
   skipThirdPartyRequests: false,
@@ -57,14 +57,14 @@ const defaultOptions = {
   http2PushManifest: false,
   // may use some glob solution in the future, if required
   // works when http2PushManifest: true
-  ignoreForPreload: ["service-worker.js"],
+  ignoreForPreload: ['service-worker.js'],
   //# unstable configurations
   preconnectThirdParty: true,
   // Experimental. This config stands for two strategies inline and critical.
   // TODO: inline strategy can contain errors, like, confuse relative urls
   inlineCss: false,
   //# feature creeps to generate screenshots
-  saveAs: "html",
+  saveAs: 'html',
   crawl: true,
   waitFor: false,
   externalServer: false,
@@ -76,7 +76,7 @@ const defaultOptions = {
   //# another feature creep
   // tribute to Netflix Server Side Only React https://twitter.com/NetflixUIE/status/923374215041912833
   // but this will also remove code which registers service worker
-  removeScriptTags: false
+  removeScriptTags: false,
 };
 
 /**
@@ -87,41 +87,33 @@ const defaultOptions = {
 const defaults = userOptions => {
   const options = {
     ...defaultOptions,
-    ...userOptions
+    ...userOptions,
   };
   options.destination = options.destination || options.source;
 
   let exit = false;
   if (!options.include || !options.include.length) {
-    console.log("🔥  include option should be an non-empty array");
+    console.log('🔥  include option should be an non-empty array');
     exit = true;
   }
   if (options.preloadResources) {
-    console.log(
-      "🔥  preloadResources option deprecated. Use preloadImages or cacheAjaxRequests"
-    );
+    console.log('🔥  preloadResources option deprecated. Use preloadImages or cacheAjaxRequests');
     exit = true;
   }
   if (options.minifyOptions) {
-    console.log("🔥  minifyOptions option renamed to minifyHtml");
+    console.log('🔥  minifyOptions option renamed to minifyHtml');
     options.minifyHtml = options.minifyOptions;
   }
   if (options.asyncJs) {
-    console.log("🔥  asyncJs option renamed to asyncScriptTags");
+    console.log('🔥  asyncJs option renamed to asyncScriptTags');
     options.asyncScriptTags = options.asyncJs;
   }
   if (options.fixWebpackChunksIssue === true) {
-    console.log(
-      "🔥  fixWebpackChunksIssue - behaviour changed, valid options are CRA1, CRA2, Parcel, false"
-    );
-    options.fixWebpackChunksIssue = "CRA1";
+    console.log('🔥  fixWebpackChunksIssue - behaviour changed, valid options are CRA1, CRA2, Parcel, false');
+    options.fixWebpackChunksIssue = 'CRA1';
   }
-  if (
-    options.saveAs !== "html" &&
-    options.saveAs !== "png" &&
-    options.saveAs !== "jpeg"
-  ) {
-    console.log("🔥  saveAs supported values are html, png, and jpeg");
+  if (options.saveAs !== 'html' && options.saveAs !== 'png' && options.saveAs !== 'jpeg') {
+    console.log('🔥  saveAs supported values are html, png, and jpeg');
     exit = true;
   }
   if (exit) throw new Error();
@@ -129,81 +121,65 @@ const defaults = userOptions => {
     options.minifyHtml.minifyCSS = options.minifyCss;
   }
 
-  if (!options.publicPath.startsWith("/")) {
+  if (!options.publicPath.startsWith('/')) {
     options.publicPath = `/${options.publicPath}`;
   }
-  options.publicPath = options.publicPath.replace(/\/$/, "");
+  options.publicPath = options.publicPath.replace(/\/$/, '');
 
-  options.include = options.include.map(
-    include => options.publicPath + include
-  );
+  options.include = options.include.map(include => options.publicPath + include);
   return options;
 };
 
-const normalizePath = path => (path === "/" ? "/" : path.replace(/\/$/, ""));
+const normalizePath = path => (path === '/' ? '/' : path.replace(/\/$/, ''));
 
 /**
  *
  * @param {{page: Page, basePath: string}} opt
  */
 const preloadResources = opt => {
-  const {
-    page,
-    basePath,
-    preloadImages,
-    cacheAjaxRequests,
-    preconnectThirdParty,
-    http2PushManifest,
-    ignoreForPreload
-  } = opt;
+  const { page, basePath, preloadImages, cacheAjaxRequests, preconnectThirdParty, http2PushManifest, ignoreForPreload } = opt;
   const ajaxCache = {};
   const http2PushManifestItems = [];
   const uniqueResources = new Set();
-  page.on("response", async response => {
+  page.on('response', async response => {
     const responseUrl = response.url();
     if (/^data:|blob:/i.test(responseUrl)) return;
-    const ct = response.headers()["content-type"] || "";
-    const route = responseUrl.replace(basePath, "");
+    const ct = response.headers()['content-type'] || '';
+    const route = responseUrl.replace(basePath, '');
     if (/^http:\/\/localhost/i.test(responseUrl)) {
       if (uniqueResources.has(responseUrl)) return;
       if (preloadImages && /\.(png|jpg|jpeg|webp|gif|svg)$/.test(responseUrl)) {
         if (http2PushManifest) {
           http2PushManifestItems.push({
             link: route,
-            as: "image"
+            as: 'image',
           });
         } else {
           await page.evaluate(route => {
-            const linkTag = document.createElement("link");
-            linkTag.setAttribute("rel", "preload");
-            linkTag.setAttribute("as", "image");
-            linkTag.setAttribute("href", route);
+            const linkTag = document.createElement('link');
+            linkTag.setAttribute('rel', 'preload');
+            linkTag.setAttribute('as', 'image');
+            linkTag.setAttribute('href', route);
             document.body.appendChild(linkTag);
           }, route);
         }
-      } else if (cacheAjaxRequests && ct.includes("json")) {
+      } else if (cacheAjaxRequests && ct.includes('json')) {
         const json = await response.json();
         ajaxCache[route] = json;
       } else if (http2PushManifest && /\.(js)$/.test(responseUrl)) {
-        const fileName = url
-          .parse(responseUrl)
-          .pathname.split("/")
-          .pop();
+        const fileName = url.parse(responseUrl).pathname.split('/').pop();
         if (!ignoreForPreload.includes(fileName)) {
           http2PushManifestItems.push({
             link: route,
-            as: "script"
+            as: 'script',
           });
         }
       } else if (http2PushManifest && /\.(css)$/.test(responseUrl)) {
-        const fileName = url
-          .parse(responseUrl)
-          .pathname.split("/")
-          .pop();
+        const fileName = url.parse(responseUrl).pathname.split('/').pop();
         if (!ignoreForPreload.includes(fileName)) {
           http2PushManifestItems.push({
             link: route,
-            as: "style"
+            as: 'style',
           });
         }
       }
@@ -214,9 +190,9 @@ const preloadResources = opt => {
       if (uniqueResources.has(domain)) return;
       uniqueResources.add(domain);
       await page.evaluate(route => {
-        const linkTag = document.createElement("link");
-        linkTag.setAttribute("rel", "preconnect");
-        linkTag.setAttribute("href", route);
+        const linkTag = document.createElement('link');
+        linkTag.setAttribute('rel', 'preconnect');
+        linkTag.setAttribute('href', route);
         document.head.appendChild(linkTag);
       }, domain);
     }
@@ -226,22 +202,19 @@ const preloadResources = opt => {
 
 const removeStyleTags = ({ page }) =>
   page.evaluate(() => {
-    Array.from(document.querySelectorAll("style")).forEach(ell => {
+    Array.from(document.querySelectorAll('style')).forEach(ell => {
       ell.parentElement && ell.parentElement.removeChild(ell);
     });
   });
 
 const removeScriptTags = ({ page }) =>
   page.evaluate(() => {
-    Array.from(document.querySelectorAll("script")).forEach(ell => {
+    Array.from(document.querySelectorAll('script')).forEach(ell => {
       ell.parentElement && ell.parentElement.removeChild(ell);
     });
   });
 
-const preloadPolyfill = nativeFs.readFileSync(
-  `${__dirname}/vendor/preload_polyfill.min.js`,
-  "utf8"
-);
+const preloadPolyfill = nativeFs.readFileSync(`${__dirname}/vendor/preload_polyfill.min.js`, 'utf8');
 
 /**
  *
@@ -251,11 +224,9 @@ const preloadPolyfill = nativeFs.readFileSync(
 const removeBlobs = async opt => {
   const { page } = opt;
   return page.evaluate(() => {
-    const stylesheets = Array.from(
-      document.querySelectorAll("link[rel=stylesheet]")
-    );
+    const stylesheets = Array.from(document.querySelectorAll('link[rel=stylesheet]'));
     stylesheets.forEach(link => {
-      if (link.href && link.href.startsWith("blob:")) {
+      if (link.href && link.href.startsWith('blob:')) {
         link.parentNode && link.parentNode.removeChild(link);
       }
     });
@@ -271,18 +242,15 @@ const inlineCss = async opt => {
 
   const minimalcssResult = await minimalcss.minimize({
     urls: [pageUrl],
-    skippable: request =>
-      options.skipThirdPartyRequests && !request.url().startsWith(basePath),
+    skippable: request => options.skipThirdPartyRequests && !request.url().startsWith(basePath),
     browser: browser,
-    userAgent: options.userAgent
+    userAgent: options.userAgent,
   });
   const criticalCss = minimalcssResult.finalCss;
-  const criticalCssSize = Buffer.byteLength(criticalCss, "utf8");
+  const criticalCssSize = Buffer.byteLength(criticalCss, 'utf8');
 
   const result = await page.evaluate(async () => {
-    const stylesheets = Array.from(
-      document.querySelectorAll("link[rel=stylesheet]")
-    );
+    const stylesheets = Array.from(document.querySelectorAll('link[rel=stylesheet]'));
     const cssArray = await Promise.all(
       stylesheets.map(async link => {
         const response = await fetch(link.href);
@@ -291,51 +259,45 @@ const inlineCss = async opt => {
     );
     return {
       cssFiles: stylesheets.map(link => link.href),
-      allCss: cssArray.join("")
+      allCss: cssArray.join(''),
     };
   });
   const allCss = new CleanCSS(options.minifyCss).minify(result.allCss).styles;
-  const allCssSize = Buffer.byteLength(allCss, "utf8");
+  const allCssSize = Buffer.byteLength(allCss, 'utf8');
 
   let cssStrategy, cssSize;
   if (criticalCssSize * 2 >= allCssSize) {
-    cssStrategy = "inline";
+    cssStrategy = 'inline';
     cssSize = allCssSize;
   } else {
-    cssStrategy = "critical";
+    cssStrategy = 'critical';
     cssSize = criticalCssSize;
   }
 
-  if (cssSize > twentyKb)
-    console.log(
-      `⚠️  warning: inlining CSS more than 20kb (${cssSize /
-        1024}kb, ${cssStrategy})`
-    );
+  if (cssSize > twentyKb) console.log(`⚠️  warning: inlining CSS more than 20kb (${cssSize / 1024}kb, ${cssStrategy})`);
 
-  if (cssStrategy === "critical") {
+  if (cssStrategy === 'critical') {
     await page.evaluate(
       (criticalCss, preloadPolyfill) => {
-        const head = document.head || document.getElementsByTagName("head")[0],
-          style = document.createElement("style");
-        style.type = "text/css";
+        const head = document.head || document.getElementsByTagName('head')[0],
+          style = document.createElement('style');
+        style.type = 'text/css';
         style.appendChild(document.createTextNode(criticalCss));
         head.appendChild(style);
-        const noscriptTag = document.createElement("noscript");
+        const noscriptTag = document.createElement('noscript');
         document.head.appendChild(noscriptTag);
 
-        const stylesheets = Array.from(
-          document.querySelectorAll("link[rel=stylesheet]")
-        );
+        const stylesheets = Array.from(document.querySelectorAll('link[rel=stylesheet]'));
         stylesheets.forEach(link => {
           noscriptTag.appendChild(link.cloneNode(false));
-          link.setAttribute("rel", "preload");
-          link.setAttribute("as", "style");
-          link.setAttribute("react-snap-onload", "this.rel='stylesheet'");
+          link.setAttribute('rel', 'preload');
+          link.setAttribute('as', 'style');
+          link.setAttribute('react-snap-onload', "this.rel='stylesheet'");
           document.head.appendChild(link);
         });
 
-        const scriptTag = document.createElement("script");
-        scriptTag.type = "text/javascript";
+        const scriptTag = document.createElement('script');
+        scriptTag.type = 'text/javascript';
         scriptTag.text = preloadPolyfill;
         // scriptTag.id = "preloadPolyfill";
         document.body.appendChild(scriptTag);
@@ -347,51 +309,42 @@ const inlineCss = async opt => {
     await page.evaluate(allCss => {
       if (!allCss) return;
 
-      const head = document.head || document.getElementsByTagName("head")[0],
-        style = document.createElement("style");
-      style.type = "text/css";
+      const head = document.head || document.getElementsByTagName('head')[0],
+        style = document.createElement('style');
+      style.type = 'text/css';
       style.appendChild(document.createTextNode(allCss));
 
-      if (!head) throw new Error("No <head> element found in document");
+      if (!head) throw new Error('No <head> element found in document');
 
       head.appendChild(style);
 
-      const stylesheets = Array.from(
-        document.querySelectorAll("link[rel=stylesheet]")
-      );
+      const stylesheets = Array.from(document.querySelectorAll('link[rel=stylesheet]'));
       stylesheets.forEach(link => {
         link.parentNode && link.parentNode.removeChild(link);
       });
     }, allCss);
   }
   return {
-    cssFiles: cssStrategy === "inline" ? result.cssFiles : []
+    cssFiles: cssStrategy === 'inline' ? result.cssFiles : [],
   };
 };
 
 const asyncScriptTags = ({ page }) => {
   return page.evaluate(() => {
-    Array.from(document.querySelectorAll("script[src]")).forEach(x => {
-      x.setAttribute("async", "true");
+    Array.from(document.querySelectorAll('script[src]')).forEach(x => {
+      x.setAttribute('async', 'true');
     });
   });
 };
 
-const fixWebpackChunksIssue1 = ({
-  page,
-  basePath,
-  http2PushManifest,
-  inlineCss
-}) => {
+const fixWebpackChunksIssue1 = ({ page, basePath, http2PushManifest, inlineCss }) => {
   return page.evaluate(
     (basePath, http2PushManifest, inlineCss) => {
-      const localScripts = Array.from(document.scripts).filter(
-        x => x.src && x.src.startsWith(basePath)
-      );
+      const localScripts = Array.from(document.scripts).filter(x => x.src && x.src.startsWith(basePath));
       // CRA v1|v2.alpha
       const mainRegexp = /main\.[\w]{8}.js|main\.[\w]{8}\.chunk\.js/;
       const mainScript = localScripts.find(x => mainRegexp.test(x.src));
-      const firstStyle = document.querySelector("style");
+      const firstStyle = document.querySelector('style');
 
       if (!mainScript) return;
 
@@ -400,22 +353,22 @@ const fixWebpackChunksIssue1 = ({
         const matched = chunkRegexp.exec(x.src);
         // we need to reset state of RegExp https://stackoverflow.com/a/11477448
         chunkRegexp.lastIndex = 0;
-        return matched && matched[1] !== "main" && matched[1] !== "vendors";
+        return matched && matched[1] !== 'main' && matched[1] !== 'vendors';
       });
 
       const mainScripts = localScripts.filter(x => {
         const matched = chunkRegexp.exec(x.src);
         // we need to reset state of RegExp https://stackoverflow.com/a/11477448
         chunkRegexp.lastIndex = 0;
-        return matched && (matched[1] === "main" || matched[1] === "vendors");
+        return matched && (matched[1] === 'main' || matched[1] === 'vendors');
       });
 
       const createLink = x => {
         if (http2PushManifest) return;
-        const linkTag = document.createElement("link");
-        linkTag.setAttribute("rel", "preload");
-        linkTag.setAttribute("as", "script");
-        linkTag.setAttribute("href", x.src.replace(basePath, ""));
+        const linkTag = document.createElement('link');
+        linkTag.setAttribute('rel', 'preload');
+        linkTag.setAttribute('as', 'script');
+        linkTag.setAttribute('href', x.src.replace(basePath, ''));
         if (inlineCss) {
           firstStyle.parentNode.insertBefore(linkTag, firstStyle);
         } else {
@@ -438,27 +391,20 @@ const fixWebpackChunksIssue1 = ({
   );
 };
 
-const fixWebpackChunksIssue2 = ({
-  page,
-  basePath,
-  http2PushManifest,
-  inlineCss
-}) => {
+const fixWebpackChunksIssue2 = ({ page, basePath, http2PushManifest, inlineCss }) => {
   return page.evaluate(
     (basePath, http2PushManifest, inlineCss) => {
-      const localScripts = Array.from(document.scripts).filter(
-        x => x.src && x.src.startsWith(basePath)
-      );
+      const localScripts = Array.from(document.scripts).filter(x => x.src && x.src.startsWith(basePath));
       // CRA v2
       const mainRegexp = /main\.[\w]{8}\.chunk\.js/;
       const mainScript = localScripts.find(x => mainRegexp.test(x.src));
-      const firstStyle = document.querySelector("style");
+      const firstStyle = document.querySelector('style');
 
       if (!mainScript) return;
 
       const chunkRegexp = /(\w+)\.[\w]{8}\.chunk\.js/g;
 
-      const headScripts = Array.from(document.querySelectorAll("head script"))
+      const headScripts = Array.from(document.querySelectorAll('head script'))
         .filter(x => x.src && x.src.startsWith(basePath))
         .filter(x => {
           const matched = chunkRegexp.exec(x.src);
@@ -476,10 +422,10 @@ const fixWebpackChunksIssue2 = ({
 
       const createLink = x => {
         if (http2PushManifest) return;
-        const linkTag = document.createElement("link");
-        linkTag.setAttribute("rel", "preload");
-        linkTag.setAttribute("as", "script");
-        linkTag.setAttribute("href", x.src.replace(basePath, ""));
+        const linkTag = document.createElement('link');
+        linkTag.setAttribute('rel', 'preload');
+        linkTag.setAttribute('as', 'script');
+        linkTag.setAttribute('href', x.src.replace(basePath, ''));
         if (inlineCss) {
           firstStyle.parentNode.insertBefore(linkTag, firstStyle);
         } else {
@@ -508,20 +454,14 @@ const fixWebpackChunksIssue2 = ({
   );
 };
 
-const fixParcelChunksIssue = ({
-  page,
-  basePath,
-  http2PushManifest,
-  inlineCss
-}) => {
+const fixParcelChunksIssue = ({ page, basePath, http2PushManifest, inlineCss }) => {
   return page.evaluate(
     (basePath, http2PushManifest, inlineCss) => {
-      const localScripts = Array.from(document.scripts)
-        .filter(x => x.src && x.src.startsWith(basePath))
+      const localScripts = Array.from(document.scripts).filter(x => x.src && x.src.startsWith(basePath));
 
       const mainRegexp = /main\.[\w]{8}\.js/;
       const mainScript = localScripts.find(x => mainRegexp.test(x.src));
-      const firstStyle = document.querySelector("style");
+      const firstStyle = document.querySelector('style');
 
       if (!mainScript) return;
 
@@ -530,15 +470,15 @@ const fixParcelChunksIssue = ({
         const matched = chunkRegexp.exec(x.src);
         // we need to reset state of RegExp https://stackoverflow.com/a/11477448
         chunkRegexp.lastIndex = 0;
-        return matched && matched[1] !== "main";
+        return matched && matched[1] !== 'main';
       });
 
       const createLink = x => {
         if (http2PushManifest) return;
-        const linkTag = document.createElement("link");
-        linkTag.setAttribute("rel", "preload");
-        linkTag.setAttribute("as", "script");
-        linkTag.setAttribute("href", x.src.replace(`${basePath}/`, ""));
+        const linkTag = document.createElement('link');
+        linkTag.setAttribute('rel', 'preload');
+        linkTag.setAttribute('as', 'script');
+        linkTag.setAttribute('href', x.src.replace(`${basePath}/`, ''));
         if (inlineCss) {
           firstStyle.parentNode.insertBefore(linkTag, firstStyle);
         } else {
@@ -562,11 +502,11 @@ const fixParcelChunksIssue = ({
 
 const fixInsertRule = ({ page }) => {
   return page.evaluate(() => {
-    Array.from(document.querySelectorAll("style")).forEach(style => {
-      if (style.innerHTML === "") {
+    Array.from(document.querySelectorAll('style')).forEach(style => {
+      if (style.innerHTML === '') {
         style.innerHTML = Array.from(style.sheet.rules)
           .map(rule => rule.cssText)
-          .join("");
+          .join('');
       }
     });
   });
@@ -574,27 +514,25 @@ const fixInsertRule = ({ page }) => {
 
 const fixFormFields = ({ page }) => {
   return page.evaluate(() => {
-    Array.from(document.querySelectorAll("[type=radio]")).forEach(element => {
+    Array.from(document.querySelectorAll('[type=radio]')).forEach(element => {
       if (element.checked) {
-        element.setAttribute("checked", "checked");
+        element.setAttribute('checked', 'checked');
       } else {
-        element.removeAttribute("checked");
+        element.removeAttribute('checked');
       }
     });
-    Array.from(document.querySelectorAll("[type=checkbox]")).forEach(
-      element => {
-        if (element.checked) {
-          element.setAttribute("checked", "checked");
-        } else {
-          element.removeAttribute("checked");
-        }
-      }
-    );
-    Array.from(document.querySelectorAll("option")).forEach(element => {
-      if (element.selected) {
-        element.setAttribute("selected", "selected");
+    Array.from(document.querySelectorAll('[type=checkbox]')).forEach(element => {
+      if (element.checked) {
+        element.setAttribute('checked', 'checked');
       } else {
-        element.removeAttribute("selected");
+        element.removeAttribute('checked');
+      }
+    });
+    Array.from(document.querySelectorAll('option')).forEach(element => {
+      if (element.selected) {
+        element.setAttribute('selected', 'selected');
+      } else {
+        element.removeAttribute('selected');
       }
     });
   });
@@ -602,53 +540,24 @@ const fixFormFields = ({ page }) => {
 
 const saveAsHtml = async ({ page, filePath, options, route, fs }) => {
   let content = await page.content();
-  content = content.replace(/react-snap-onload/g, "onload");
+  content = content.replace(/react-snap-onload/g, 'onload');
   const title = await page.title();
-  const minifiedContent = options.minifyHtml
-    ? minify(content, options.minifyHtml)
-    : content;
+  const minifiedContent = options.minifyHtml ? minify(content, options.minifyHtml) : content;
   filePath = filePath.replace(/\//g, path.sep);
-  if (route.endsWith(".html")) {
-    if (route.endsWith("/404.html") && !title.includes("404"))
-      console.log('⚠️  warning: 404 page title does not contain "404" string');
+  if (route.endsWith('.html')) {
+    if (route.endsWith('/404.html') && !title.includes('404')) console.log('⚠️  warning: 404 page title does not contain "404" string');
     mkdirp.sync(path.dirname(filePath));
     fs.writeFileSync(filePath, minifiedContent);
   } else {
-    if (title.includes("404"))
-      console.log(`⚠️  warning: page not found ${route}`);
+    if (title.includes('404')) console.log(`⚠️  warning: page not found ${route}`);
     mkdirp.sync(filePath);
     fs.writeFileSync(path.join(filePath, options.htmlName), minifiedContent);
   }
 };
 
-const saveAsPng = ({ page, filePath, options, route }) => {
-  mkdirp.sync(path.dirname(filePath));
-  let screenshotPath;
-  if (route.endsWith(".html")) {
-    screenshotPath = filePath.replace(/\.html$/, ".png");
-  } else if (route === "/") {
-    screenshotPath = `${filePath}index.png`;
-  } else {
-    screenshotPath = `${filePath.replace(/\/$/, "")}.png`;
-  }
-  return page.screenshot({ path: screenshotPath });
-};
-
-const saveAsJpeg = ({ page, filePath, options, route }) => {
-  mkdirp.sync(path.dirname(filePath));
-  let screenshotPath;
-  if (route.endsWith(".html")) {
-    screenshotPath = filePath.replace(/\.html$/, ".jpeg");
-  } else if (route === "/") {
-    screenshotPath = `${filePath}index.jpeg`;
-  } else {
-    screenshotPath = `${filePath.replace(/\/$/, "")}.jpeg`;
-  }
-  return page.screenshot({ path: screenshotPath });
-};
-
 const run = async (userOptions, { fs } = { fs: nativeFs }) => {
   let options;
+  debugger;
   try {
     options = defaults(userOptions);
   } catch (e) {
@@ -656,43 +565,31 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
   }
 
   const sourceDir = path.normalize(`${process.cwd()}/${options.source}`);
-  const destinationDir = path.normalize(
-    `${process.cwd()}/${options.destination}`
-  );
+  const destinationDir = path.normalize(`${process.cwd()}/${options.destination}`);
   const startServer = options => {
     const app = express()
       .use(options.publicPath, serveStatic(sourceDir))
-      .use(fallback("200.html", { root: sourceDir }));
+      .use(fallback('200.html', { root: sourceDir }));
     const server = http.createServer(app);
     server.listen(options.port);
     return server;
   };
 
-  if (
-    destinationDir === sourceDir &&
-    options.saveAs === "html" &&
-    fs.existsSync(path.join(sourceDir, "200.html"))
-  ) {
-    console.log(
-      `🔥  200.html is present in the sourceDir (${sourceDir}). You can not run react-snap twice - this will break the build`
-    );
-    return Promise.reject("");
+  if (destinationDir === sourceDir && options.saveAs === 'html' && fs.existsSync(path.join(sourceDir, '200.html'))) {
+    console.log(`🔥  200.html is present in the sourceDir (${sourceDir}). You can not run react-snap twice - this will break the build`);
+    return Promise.reject('');
   }
 
-  fs.createReadStream(path.join(sourceDir, options.htmlName)).pipe(
-    fs.createWriteStream(path.join(sourceDir, "200.html"))
-  );
+  fs.createReadStream(path.join(sourceDir, options.htmlName)).pipe(fs.createWriteStream(path.join(sourceDir, '200.html')));
 
-  if (destinationDir !== sourceDir && options.saveAs === "html") {
-    mkdirp.sync(destinationDir);
-    fs.createReadStream(path.join(sourceDir, options.htmlName)).pipe(
-      fs.createWriteStream(path.join(destinationDir, "200.html"))
-    );
-  }
+  // if (destinationDir !== sourceDir && options.saveAs === 'html') {
+  //   mkdirp.sync(destinationDir);
+  //   fs.createReadStream(path.join(sourceDir, options.htmlName)).pipe(fs.createWriteStream(path.join(destinationDir, '200.html')));
+  // }
 
   const server = options.externalServer ? null : startServer(options);
 
-  const basePath = `http://localhost:${options.port}/${options.htmlName}`;
+  const basePath = `http://localhost:${options.port}`;
   const publicPath = options.publicPath;
   const ajaxCache = {};
   const { http2PushManifest } = options;
@@ -704,28 +601,17 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
     publicPath,
     sourceDir,
     beforeFetch: async ({ page, route }) => {
-      const {
-        preloadImages,
-        cacheAjaxRequests,
-        preconnectThirdParty
-      } = options;
-      if (
-        preloadImages ||
-        cacheAjaxRequests ||
-        preconnectThirdParty ||
-        http2PushManifest
-      ) {
-        const { ajaxCache: ac, http2PushManifestItems: hpm } = preloadResources(
-          {
-            page,
-            basePath,
-            preloadImages,
-            cacheAjaxRequests,
-            preconnectThirdParty,
-            http2PushManifest,
-            ignoreForPreload: options.ignoreForPreload
-          }
-        );
+      const { preloadImages, cacheAjaxRequests, preconnectThirdParty } = options;
+      if (preloadImages || cacheAjaxRequests || preconnectThirdParty || http2PushManifest) {
+        const { ajaxCache: ac, http2PushManifestItems: hpm } = preloadResources({
+          page,
+          basePath,
+          preloadImages,
+          cacheAjaxRequests,
+          preconnectThirdParty,
+          http2PushManifest,
+          ignoreForPreload: options.ignoreForPreload,
+        });
         ajaxCache[route] = ac;
         http2PushManifestItems[route] = hpm;
       }
@@ -741,13 +627,11 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
           pageUrl,
           options,
           basePath,
-          browser
+          browser,
         });
 
         if (http2PushManifest) {
-          const filesToRemove = cssFiles
-            .filter(file => file.startsWith(basePath))
-            .map(file => file.replace(basePath, ""));
+          const filesToRemove = cssFiles.filter(file => file.startsWith(basePath)).map(file => file.replace(basePath, ''));
 
           for (let i = http2PushManifestItems[route].length - 1; i >= 0; i--) {
             const x = http2PushManifestItems[route][i];
@@ -760,26 +644,26 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
         }
       }
 
-      if (options.fixWebpackChunksIssue === "Parcel") {
+      if (options.fixWebpackChunksIssue === 'Parcel') {
         await fixParcelChunksIssue({
           page,
           basePath,
           http2PushManifest,
-          inlineCss: options.inlineCss
+          inlineCss: options.inlineCss,
         });
-      } else if (options.fixWebpackChunksIssue === "CRA2") {
+      } else if (options.fixWebpackChunksIssue === 'CRA2') {
         await fixWebpackChunksIssue2({
           page,
           basePath,
           http2PushManifest,
-          inlineCss: options.inlineCss
+          inlineCss: options.inlineCss,
         });
-      } else if (options.fixWebpackChunksIssue === "CRA1") {
+      } else if (options.fixWebpackChunksIssue === 'CRA1') {
         await fixWebpackChunksIssue1({
           page,
           basePath,
           http2PushManifest,
-          inlineCss: options.inlineCss
+          inlineCss: options.inlineCss,
         });
       }
       if (options.asyncScriptTags) await asyncScriptTags({ page });
@@ -790,11 +674,11 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
           // Mapping of unsafe HTML and invalid JavaScript line terminator chars to their
           // Unicode char counterparts which are safe to use in JavaScript strings.
           const ESCAPED_CHARS = {
-            "<": "\\u003C",
-            ">": "\\u003E",
-            "/": "\\u002F",
-            "\u2028": "\\u2028",
-            "\u2029": "\\u2029"
+            '<': '\\u003C',
+            '>': '\\u003E',
+            '/': '\\u002F',
+            '\u2028': '\\u2028',
+            '\u2029': '\\u2029',
           };
           const escapeUnsafeChars = unsafeChar => ESCAPED_CHARS[unsafeChar];
           return str => str.replace(UNSAFE_CHARS_REGEXP, escapeUnsafeChars);
@@ -804,25 +688,19 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
         // e.g. Date, Set, Map, NaN won't be handled right
         const snapStringify = obj => snapEscape(JSON.stringify(obj));
 
-        let scriptTagText = "";
+        let scriptTagText = '';
         if (ajaxCache && Object.keys(ajaxCache).length > 0) {
-          scriptTagText += `window.snapStore=${snapEscape(
-            JSON.stringify(ajaxCache)
-          )};`;
+          scriptTagText += `window.snapStore=${snapEscape(JSON.stringify(ajaxCache))};`;
         }
         let state;
-        if (
-          window.snapSaveState &&
-          (state = window.snapSaveState()) &&
-          Object.keys(state).length !== 0
-        ) {
+        if (window.snapSaveState && (state = window.snapSaveState()) && Object.keys(state).length !== 0) {
           scriptTagText += Object.keys(state)
             .map(key => `window["${key}"]=${snapStringify(state[key])};`)
-            .join("");
+            .join('');
         }
-        if (scriptTagText !== "") {
-          const scriptTag = document.createElement("script");
-          scriptTag.type = "text/javascript";
+        if (scriptTagText !== '') {
+          const scriptTag = document.createElement('script');
+          scriptTag.type = 'text/javascript';
           scriptTag.text = scriptTagText;
           const firstScript = Array.from(document.scripts)[0];
           firstScript.parentNode.insertBefore(scriptTag, firstScript);
@@ -832,53 +710,42 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
       if (options.fixInsertRule) await fixInsertRule({ page });
       await fixFormFields({ page });
 
-      let routePath = route.replace(publicPath, "");
+      let routePath = '';
+      console.log(routePath, 'routePath');
       let filePath = path.join(destinationDir, routePath);
-      if (options.saveAs === "html") {
+      console.log(filePath, 'filePath');
+
+      if (options.saveAs === 'html') {
         await saveAsHtml({ page, filePath, options, route, fs });
         let newRoute = await page.evaluate(() => location.toString());
-        newPath = normalizePath(
-          newRoute.replace(publicPath, "").replace(basePath, "")
-        );
+        newPath = normalizePath(newRoute.replace(publicPath, '').replace(basePath, ''));
         routePath = normalizePath(routePath);
         if (routePath !== newPath) {
-          console.log(newPath)
+          console.log(newPath);
           console.log(`💬  in browser redirect (${newPath})`);
           addToQueue(newRoute);
         }
-      } else if (options.saveAs === "png") {
-        await saveAsPng({ page, filePath, options, route, fs });
-      } else if (options.saveAs === "jpeg") {
-        await saveAsJpeg({ page, filePath, options, route, fs });
       }
     },
     onEnd: () => {
       if (server) server.close();
       if (http2PushManifest) {
-        const manifest = Object.keys(http2PushManifestItems).reduce(
-          (accumulator, key) => {
-            if (http2PushManifestItems[key].length !== 0)
-              accumulator.push({
-                source: key,
-                headers: [
-                  {
-                    key: "Link",
-                    value: http2PushManifestItems[key]
-                      .map(x => `<${x.link}>;rel=preload;as=${x.as}`)
-                      .join(",")
-                  }
-                ]
-              });
-            return accumulator;
-          },
-          []
-        );
-        fs.writeFileSync(
-          `${destinationDir}/http2-push-manifest.json`,
-          JSON.stringify(manifest)
-        );
+        const manifest = Object.keys(http2PushManifestItems).reduce((accumulator, key) => {
+          if (http2PushManifestItems[key].length !== 0)
+            accumulator.push({
+              source: key,
+              headers: [
+                {
+                  key: 'Link',
+                  value: http2PushManifestItems[key].map(x => `<${x.link}>;rel=preload;as=${x.as}`).join(','),
+                },
+              ],
+            });
+          return accumulator;
+        }, []);
+        fs.writeFileSync(`${destinationDir}/http2-push-manifest.json`, JSON.stringify(manifest));
       }
-    }
+    },
   });
 };
 
