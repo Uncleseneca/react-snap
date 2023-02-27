@@ -17,7 +17,7 @@ const defaultOptions = {
   htmlName: 'index.html',
   //# stable configurations
   port: 45678,
-  source: 'build',
+  source: process.env.CI_ENVIRONMENT_NAME ? `build_${CI_ENVIRONMENT_NAME}` : 'build',
   destination: null,
   concurrency: 4,
   include: ['/'],
